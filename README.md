@@ -15,10 +15,10 @@ local challenge environment from scratch:
 
 ## Current status
 
-The deterministic tokenizer and hostile mock server are implemented. The current
-24-test suite covers their protocol and all S1–S12 scenario contracts. The Part A
-agent runtime is not yet implemented, so no runtime correctness or security
-claims are made yet.
+The deterministic tokenizer, hostile mock server, seeded process-kill primitive,
+and public/generated red-team corpus are implemented. The current 30-test suite
+covers their contracts. The Part A agent runtime is not yet implemented, so no
+runtime correctness or security claims are made yet.
 
 See `TIMELOG.md` for actual work time and `DECISIONS.md` for architecture choices.
 Generated runtime state will be confined to `workspace/`.
@@ -70,3 +70,19 @@ keeps setup dependency-free. The server rejects input above 8,000 tokens using:
 ```sh
 python -m mockllm.tokenizer "text to count"
 ```
+
+## Harness contracts
+
+The generic crash primitive can repeatedly kill any command at deterministic
+pseudo-random times:
+
+```sh
+python -m harness.chaos --runs 10 --seed 7 -- python your_target.py
+```
+
+The final `make chaos` command will wrap this primitive around `agent run` and
+`agent resume`, then assert the SQLite email invariant.
+
+`harness/redteam/payloads/` contains public provenance, filesystem, network,
+encoding, and email-injection attacks. The corpus module also creates seeded
+variants so runtime defenses cannot pass by matching only the committed strings.

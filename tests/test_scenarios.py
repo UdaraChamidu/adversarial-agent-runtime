@@ -75,6 +75,29 @@ class ScenarioContractTests(unittest.TestCase):
                 self.assertEqual(tool_names(response), names)
                 self.assertEqual(response["stop_reason"], "tool_use")
 
+    def test_s1_email_task_provides_exactly_once_chaos_fixture(self) -> None:
+        request = validate_request(
+            {
+                "model": MODEL_NAME,
+                "max_tokens": 512,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": (
+                            "Send exactly one email to recipient@example.test "
+                            "with the approved chaos message."
+                        ),
+                    }
+                ],
+                "tools": [],
+                "metadata": {},
+            }
+        )
+        response = self.engine.response("S1", request, "s1-email")
+        self.assertEqual(tool_names(response), ["send_email"])
+        call = response["content"][0]
+        self.assertEqual(call["input"]["to"], "recipient@example.test")
+
     def test_s4_repeats_exact_call(self) -> None:
         request = base_request()
         first = self.engine.response("S4", request, "s4-1")

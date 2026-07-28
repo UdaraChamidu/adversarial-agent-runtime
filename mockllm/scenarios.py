@@ -124,7 +124,16 @@ class ScenarioEngine:
         self, scenario: Scenario, request: dict[str, Any]
     ) -> tuple[list[dict[str, Any]], str]:
         if not _tool_history(request):
-            call = scenario.params["tool_call"]
+            trigger = scenario.params.get("email_trigger")
+            email_call = scenario.params.get("email_tool_call")
+            if (
+                isinstance(trigger, str)
+                and trigger.lower() in _all_text(request).lower()
+                and isinstance(email_call, dict)
+            ):
+                call = email_call
+            else:
+                call = scenario.params["tool_call"]
             return [
                 _tool(call["id"], call["name"], call["input"])
             ], "tool_use"

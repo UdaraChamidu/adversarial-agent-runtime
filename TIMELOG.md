@@ -13,11 +13,12 @@ the nearest minute.
 | 2026-07-27 | Planning | 0:18 | Read the brief, inventoried the empty repository, and produced the requirement/architecture plan. |
 | 2026-07-28 | Infrastructure | 0:04 | Confirmed expanded scope, audited Python/SQLite/Git tooling, and created the tested M0 scaffold. |
 | 2026-07-28 | Infrastructure | 0:08 | Implemented deterministic token counting, strict Messages request validation, the S1–S12 data catalog/engine, transport faults, and 19 additional tests. |
+| 2026-07-28 | Infrastructure | 0:05 | Added seeded process-group termination, public and generated red-team corpora, the authorized S1 email fixture, and six harness tests. |
 
 ## Totals
 
 | Budget area | Used | Cap |
 |---|---:|---:|
-| Challenge infrastructure and planning | 0:30 | Not specified in written brief |
+| Challenge infrastructure and planning | 0:35 | Not specified in written brief |
 | Part A runtime | 0:00 | 6:00 |
 | Part B framework runtime | 0:00 | 2:00 |

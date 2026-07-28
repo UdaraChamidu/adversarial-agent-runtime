@@ -30,6 +30,12 @@ idempotency key or reconciliation.
 boundary. Filesystem confinement, URL allow-listing, process limits, tool schema
 validation, and email capabilities will be deterministic runtime checks.
 
+**Adversarial fixtures mix reviewability and variation.** Five readable red-team
+payloads document the expected trust boundaries, while a seeded generator changes
+wrappers, encodings, and privileged requests. The chaos primitive kills an OS
+process group at seeded random delays. Deterministic seeds make failures
+reproducible without making the runtime aware of the selected attack.
+
 **Part B waits for a measured Part A baseline.** Framework code will not begin
 until Part A has recorded scenario, chaos, security, context, and replay results.
 That makes the later comparison evidence-based instead of speculative.

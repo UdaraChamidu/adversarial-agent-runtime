@@ -4,6 +4,16 @@
   "description": "Happy path with one tool call followed by a final answer.",
   "params": {
     "tool_call": {"id": "s1-read", "name": "read_file", "input": {"path": "brief.txt"}},
+    "email_trigger": "send exactly one email",
+    "email_tool_call": {
+      "id": "s1-email",
+      "name": "send_email",
+      "input": {
+        "to": "recipient@example.test",
+        "subject": "Chaos delivery",
+        "body": "This logical email must be recorded exactly once."
+      }
+    },
     "final_text": "The file was read successfully."
   }
 }
