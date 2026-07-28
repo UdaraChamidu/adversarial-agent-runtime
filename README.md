@@ -16,9 +16,13 @@ local challenge environment from scratch:
 ## Current status
 
 The deterministic tokenizer, hostile mock server, seeded process-kill primitive,
-and public/generated red-team corpus are implemented. The current 30-test suite
-covers their contracts. The Part A agent runtime is not yet implemented, so no
-runtime correctness or security claims are made yet.
+public/generated red-team corpus, and Part A SQLite durability core are
+implemented. The current 40-test suite covers their contracts.
+
+The durability unit suite proves one simulated email row after retries, concurrent
+callers, and injected failures at every SQLite transaction boundary. This is not
+yet the full R2 claim: the end-to-end agent resume path and 100 external process
+kills still need to pass.
 
 See `TIMELOG.md` for actual work time and `DECISIONS.md` for architecture choices.
 Generated runtime state will be confined to `workspace/`.
@@ -86,3 +90,15 @@ The final `make chaos` command will wrap this primitive around `agent run` and
 `harness/redteam/payloads/` contains public provenance, filesystem, network,
 encoding, and email-injection attacks. The corpus module also creates seeded
 variants so runtime defenses cannot pass by matching only the committed strings.
+
+## Durability contract
+
+Canonical run history is stored in an append-only, SHA-256-linked SQLite event
+log. Mutable run columns are rebuildable projections. A per-run OS advisory lock
+prevents two processes from advancing one run at the same time.
+
+For `send_email`, the email row, tool-effect idempotency record, result, and event
+share one `BEGIN IMMEDIATE` transaction. A retry with the same internal tool
+occurrence returns its stored result. A second occurrence for the same authorized
+logical email slot is deduplicated. Reusing either key with changed content fails
+loudly.

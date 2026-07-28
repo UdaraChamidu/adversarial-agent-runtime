@@ -26,6 +26,12 @@ completion event can therefore commit atomically. This proves exactly-once for
 the simulated sink; a real provider would additionally need a provider-supported
 idempotency key or reconciliation.
 
+**Internal occurrence identity never trusts model IDs.** Tool occurrences derive
+from run ID, committed response sequence, and block position; repeated external
+`tool_use` IDs cannot collide. Events are append-only and hash-linked. A
+cross-platform advisory file lock prevents concurrent resume owners and is
+released by the OS after `kill -9`.
+
 **Security is enforced outside the model.** Prompt wording is not a security
 boundary. Filesystem confinement, URL allow-listing, process limits, tool schema
 validation, and email capabilities will be deterministic runtime checks.
