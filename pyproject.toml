@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adversarial-agent-runtime"
+version = "0.1.0"
+description = "Durable agent runtime and hostile local Messages API test environment"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+agent = "agent.cli:main"
+mockllm = "mockllm.server:main"
+
+[tool.setuptools.packages.find]
+include = ["agent*", "mockllm*", "harness*", "evals*"]

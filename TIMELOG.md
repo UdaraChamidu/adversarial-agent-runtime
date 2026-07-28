@@ -1,0 +1,22 @@
+# Time Log
+
+The written brief budgets six hours for Part A and two hours for Part B. It
+describes the mock server, tokenizer, and harness as supplied; the publisher later
+clarified that this project must build them too. Infrastructure time is therefore
+shown separately rather than hidden inside the Part A runtime budget.
+
+Times use Asia/Colombo (UTC+05:30). Durations are active working time, rounded to
+the nearest minute.
+
+| Date | Area | Active time | Work and result |
+|---|---|---:|---|
+| 2026-07-27 | Planning | 0:18 | Read the brief, inventoried the empty repository, and produced the requirement/architecture plan. |
+| 2026-07-28 | Infrastructure | 0:04 | Confirmed expanded scope, audited Python/SQLite/Git tooling, and created the tested M0 scaffold. |
+
+## Totals
+
+| Budget area | Used | Cap |
+|---|---:|---:|
+| Challenge infrastructure and planning | 0:22 | Not specified in written brief |
+| Part A runtime | 0:00 | 6:00 |
+| Part B framework runtime | 0:00 | 2:00 |

@@ -1,0 +1,21 @@
+candidate-brief.md
+PROJECT_PLAN.md
+PROJECT_STATUS.md
+.gitignore
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+build/
+dist/
+
+# Runtime-created state must remain inside workspace, but not in Git.
+workspace/*
+!workspace/.gitkeep
+
+# Generated reports; committed baselines remain under evals/baseline/.
+evals/reports/
