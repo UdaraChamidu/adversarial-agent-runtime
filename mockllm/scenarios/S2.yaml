@@ -1,0 +1,6 @@
+{
+  "id": "S2",
+  "behavior": "malformed_arguments",
+  "description": "Tool arguments contain a trailing comma, raw newline, and truncated object.",
+  "params": {"final_text": "Malformed argument handling is complete."}
+}

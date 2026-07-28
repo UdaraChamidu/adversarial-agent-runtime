@@ -1,0 +1,8 @@
+{
+  "id": "S4",
+  "behavior": "infinite_loop",
+  "description": "Repeats the same tool and arguments forever.",
+  "params": {
+    "tool_call": {"id": "loop-id", "name": "read_file", "input": {"path": "brief.txt"}}
+  }
+}

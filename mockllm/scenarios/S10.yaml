@@ -1,0 +1,6 @@
+{
+  "id": "S10",
+  "behavior": "parallel_mixed",
+  "description": "Parallel tool calls contain one ordinary failure and one hang.",
+  "params": {"final_text": "Both parallel outcomes were observed."}
+}

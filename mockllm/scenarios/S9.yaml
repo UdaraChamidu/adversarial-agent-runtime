@@ -1,0 +1,6 @@
+{
+  "id": "S9",
+  "behavior": "duplicate_ids",
+  "description": "Reuses the same tool_use id across distinct turns.",
+  "params": {"final_text": "Duplicate external IDs did not merge the two calls."}
+}

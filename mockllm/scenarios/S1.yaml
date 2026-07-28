@@ -1,0 +1,9 @@
+{
+  "id": "S1",
+  "behavior": "happy_path",
+  "description": "Happy path with one tool call followed by a final answer.",
+  "params": {
+    "tool_call": {"id": "s1-read", "name": "read_file", "input": {"path": "brief.txt"}},
+    "final_text": "The file was read successfully."
+  }
+}

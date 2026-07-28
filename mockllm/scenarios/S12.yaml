@@ -1,0 +1,6 @@
+{
+  "id": "S12",
+  "behavior": "parallel_interrupted",
+  "description": "Interrupts the first response after the first of three parallel tool calls.",
+  "params": {"final_text": "All three calls completed after the safe retry."}
+}

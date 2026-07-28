@@ -1,0 +1,9 @@
+{
+  "id": "S6",
+  "behavior": "happy_path",
+  "description": "Returns 429 with Retry-After, then 529, then 200.",
+  "params": {
+    "tool_call": {"id": "s6-read", "name": "read_file", "input": {"path": "brief.txt"}},
+    "final_text": "The bounded retry sequence recovered."
+  }
+}

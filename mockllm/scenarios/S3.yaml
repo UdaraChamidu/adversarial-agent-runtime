@@ -1,0 +1,6 @@
+{
+  "id": "S3",
+  "behavior": "invalid_tools",
+  "description": "Calls a nonexistent tool and a real tool with a wrong argument type.",
+  "params": {"final_text": "The invalid tool requests were rejected."}
+}

@@ -1,0 +1,10 @@
+{
+  "id": "S8",
+  "behavior": "growing_context",
+  "description": "Responses grow while a fact introduced at turn 3 is needed at turn 40.",
+  "params": {
+    "critical_fact": "ORCHID-73",
+    "final_turn": 40,
+    "growth_chars": 180
+  }
+}

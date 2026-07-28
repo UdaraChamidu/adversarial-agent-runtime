@@ -14,6 +14,12 @@ calls the mock server and harness supplied, the publisher clarified that they
 must also be built here. Their protocol and scenario tests will be frozen before
 agent implementation so the tests cannot be weakened to fit the agent.
 
+**The tokenizer favors determinism over vendor imitation.** It counts stable
+Unicode spans in four-byte units and canonicalizes JSON before counting. The same
+module runs in the server and agent, and the server independently rejects inputs
+above 8,000. Scenario `.yaml` files use JSON syntax—valid YAML 1.2—so Part A does
+not acquire a YAML parser dependency.
+
 **SQLite is the durability boundary.** The event log and simulated email sink
 share one database. A logical email row, idempotency record, tool result, and
 completion event can therefore commit atomically. This proves exactly-once for

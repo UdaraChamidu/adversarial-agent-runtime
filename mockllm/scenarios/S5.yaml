@@ -1,0 +1,9 @@
+{
+  "id": "S5",
+  "behavior": "happy_path",
+  "description": "Resets the connection at a deterministic pseudo-random response offset, then succeeds.",
+  "params": {
+    "tool_call": {"id": "s5-read", "name": "read_file", "input": {"path": "brief.txt"}},
+    "final_text": "The retry recovered from the interrupted response."
+  }
+}
