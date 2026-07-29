@@ -49,6 +49,20 @@ tool is checked for success claims. If contradictory, the runtime records a
 grounding correction and requests a corrected answer within the same limits. It
 never changes the underlying failed result.
 
+**Compaction is extractive and source-linked.** Full history stays in SQLite; the
+model sees the original task, explicit fact lines with event sequence provenance,
+and the newest complete turn units that fit. This beat a model-written rolling
+summary because exact identifiers such as `ORCHID-73` cannot be paraphrased away,
+summary drift cannot accumulate across 40 turns, and replay can audit every
+retained fact. The cost is lower semantic compression for facts not marked as
+important.
+
+**Replay verifies decisions; it does not rerun effects.** JSONL is an atomic
+export of the canonical event chain. Offline replay recalculates request budgets,
+tool occurrence identities, result coverage, and a stable decision hash without
+calling the model or tools. Re-executing tools would violate the no-side-effect
+meaning of replay.
+
 **Security is enforced outside the model.** Prompt wording is not a security
 boundary. Filesystem confinement, URL allow-listing, process limits, tool schema
 validation, and email capabilities will be deterministic runtime checks.

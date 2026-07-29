@@ -10,11 +10,13 @@ from pathlib import Path
 from typing import Any
 
 from agent.events import Event, occurrence_key
+from agent.context import compact_messages, extract_facts
 from agent.locking import run_lock
 from agent.model_client import Attempt, MessagesClient, ModelClientError
 from agent.policy import derive_capabilities
 from agent.store import EventStore
 from agent.tools import ToolContext, ToolExecutor, ToolResult
+from agent.tracing import export_trace
 from mockllm.protocol import CONTEXT_LIMIT, MODEL_NAME, request_token_count
 from mockllm.tokenizer import canonical_json
 
@@ -29,7 +31,7 @@ Never claim that a failed tool succeeded. Use only the supplied tools."""
 class RuntimeLimits:
     step_limit: int = 50
     no_progress_limit: int = 3
-    total_token_limit: int = 100_000
+    total_token_limit: int = 300_000
     max_parallel_tools: int = 4
 
 
@@ -73,6 +75,7 @@ class AgentRuntime:
                 events = self.store.load_events(run_id)
                 state = self.store.rebuild_state(run_id)
                 if state.status != "running":
+                    export_trace(self.store, run_id, self.workspace / "traces")
                     return RuntimeOutcome(
                         run_id, state.status, state.final_text, state.stop_reason
                     )
@@ -106,13 +109,32 @@ class AgentRuntime:
                     "metadata": {
                         "scenario": state.scenario,
                         "request_id": f"req_{run_id}_{len(responses) + 1}",
+                        "runtime_step": len(responses) + 1,
                     },
                 }
                 tokens = request_token_count(request_body)
                 if tokens > CONTEXT_LIMIT:
-                    return self._stop(
-                        run_id, f"context_budget_exceeded:{tokens}>{CONTEXT_LIMIT}"
+                    request_body, compaction = self._compact_request(
+                        run_id, events, request_body
                     )
+                    tokens = request_token_count(request_body)
+                    request_id = request_body["metadata"]["request_id"]
+                    if not any(
+                        event.event_type == "context_compacted"
+                        and event.payload.get("request_id") == request_id
+                        for event in events
+                    ):
+                        self.store.append_event(
+                            run_id,
+                            "context_compacted",
+                            {
+                                "request_id": request_id,
+                                "facts": list(compaction.facts),
+                                "retained_turns": compaction.retained_turns,
+                                "dropped_turns": compaction.dropped_turns,
+                                "token_count": compaction.token_count,
+                            },
+                        )
                 request_id = request_body["metadata"]["request_id"]
                 self.store.plan_model_request(run_id, request_id, request_body)
 
@@ -252,10 +274,18 @@ class AgentRuntime:
             )
 
     def _build_messages(self, run_id: str, events: list[Event]) -> list[dict[str, Any]]:
+        task, units = self._message_units(run_id, events)
+        return [{"role": "user", "content": task}] + [
+            message for unit in units for message in unit
+        ]
+
+    def _message_units(
+        self, run_id: str, events: list[Event]
+    ) -> tuple[str, list[list[dict[str, Any]]]]:
         task = next(
             event.payload["task"] for event in events if event.event_type == "run_created"
         )
-        messages: list[dict[str, Any]] = [{"role": "user", "content": task}]
+        units: list[list[dict[str, Any]]] = []
         results = {
             event.payload["occurrence_key"]: event.payload["result"]
             for event in events if event.event_type == "tool_result_committed"
@@ -277,7 +307,9 @@ class AgentRuntime:
                     copied["id"] = occurrence_key(run_id, event.seq, index)
                     tool_blocks.append((index, copied))
                 normalized.append(copied)
-            messages.append({"role": "assistant", "content": normalized})
+            unit: list[dict[str, Any]] = [
+                {"role": "assistant", "content": normalized}
+            ]
             if tool_blocks:
                 tool_results = []
                 for index, block in tool_blocks:
@@ -294,10 +326,41 @@ class AgentRuntime:
                         }
                     )
                 else:
-                    messages.append({"role": "user", "content": tool_results})
+                    unit.append({"role": "user", "content": tool_results})
             if event.seq in corrections:
-                messages.append({"role": "user", "content": corrections[event.seq]})
-        return messages
+                unit.append({"role": "user", "content": corrections[event.seq]})
+            units.append(unit)
+        return task, units
+
+    def _compact_request(
+        self,
+        run_id: str,
+        events: list[Event],
+        request_body: dict[str, Any],
+    ):
+        task, units = self._message_units(run_id, events)
+        facts = extract_facts(events)
+
+        def count(messages: list[dict[str, Any]]) -> int:
+            candidate = dict(request_body)
+            candidate["messages"] = messages
+            return request_token_count(candidate)
+
+        compaction = compact_messages(
+            original_task=task,
+            turn_units=units,
+            facts=facts,
+            count_request_tokens=count,
+            target_tokens=7_800,
+        )
+        compacted = dict(request_body)
+        compacted["messages"] = compaction.messages
+        compacted["metadata"] = {
+            **request_body["metadata"],
+            "compacted": True,
+            "retained_turns": compaction.retained_turns,
+        }
+        return compacted, compaction
 
     def _no_progress(self, responses: list[Event]) -> bool:
         fingerprints: list[str] = []

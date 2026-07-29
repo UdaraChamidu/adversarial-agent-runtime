@@ -19,8 +19,8 @@ The deterministic tokenizer, hostile mock server, seeded process-kill primitive,
 public/generated red-team corpus, and Part A SQLite durability core are
 implemented. All five tools and the trusted-task capability gate are also
 implemented. The durable Messages client, event-derived loop, and working
-`run`/`resume` CLI now pass S1–S7 and S9–S12. The current 71-test suite covers
-their contracts.
+`run`/`resume` CLI now pass S1–S12. Context compaction, JSONL traces, and offline
+replay are also implemented. The current 76-test suite covers their contracts.
 
 R2 now passes end to end. In the recorded batch, 100 distinct logical email runs
 were each hard-killed in a separate process, resumed in a fresh process, and
@@ -28,9 +28,8 @@ checked for a valid event chain, completed state, and exactly one email row:
 `100/100` passed with `100` observed kills. The machine-readable result is
 `evidence/chaos-100.json`.
 
-S8 is not claimed yet: the loop currently stops legibly before sending a request
-above 8,000 tokens, but context compaction and turn-40 recall are the next
-separate milestone.
+S8 passes 40 turns: every exact serialized request remains at or below 8,000
+tokens, and the fact introduced at turn 3 is correctly available at turn 40.
 
 See `TIMELOG.md` for actual work time and `DECISIONS.md` for architecture choices.
 Generated runtime state will be confined to `workspace/`.
@@ -73,6 +72,17 @@ python -m agent resume RUN_ID --workspace workspace
 Each logical request is planned once in SQLite. Only a complete, schema-valid
 response is committed. S5/S6/S12 retry attempts are recorded, and partial
 responses never execute tools.
+
+Completed runs atomically export `workspace/traces/<run_id>.jsonl`. Replay needs
+only SQLite—no model server:
+
+```sh
+python -m agent replay RUN_ID --workspace workspace
+```
+
+Replay verifies the hash chain, request budgets, response/request pairing, tool
+occurrence identities, result coverage, and terminal decision, then emits a
+stable decision hash.
 
 ## Mock model contract
 
@@ -127,6 +137,20 @@ share one `BEGIN IMMEDIATE` transaction. A retry with the same internal tool
 occurrence returns its stored result. A second occurrence for the same authorized
 logical email slot is deduplicated. Reusing either key with changed content fails
 loudly.
+
+## Context strategy
+
+The canonical full transcript always remains in SQLite. When a request would
+exceed the ceiling, the runtime builds a smaller view containing:
+
+- the immutable original task;
+- source-linked extractive lines explicitly marked as facts to preserve;
+- the newest complete assistant/tool-result turn units that fit under a
+  7,800-token target.
+
+The remaining margin covers compaction metadata. The final serialized request is
+counted again before transport. Compacted memory is historical data, not a source
+of capabilities.
 
 ## Tool security contract
 

@@ -194,8 +194,12 @@ class ScenarioEngine:
     def _handle_growing_context(
         self, scenario: Scenario, request: dict[str, Any]
     ) -> tuple[list[dict[str, Any]], str]:
-        completed_rounds = _tool_round(request)
-        next_turn = completed_rounds + 1
+        runtime_step = request.get("metadata", {}).get("runtime_step")
+        next_turn = (
+            int(runtime_step)
+            if isinstance(runtime_step, int) and runtime_step > 0
+            else _tool_round(request) + 1
+        )
         final_turn = int(scenario.params["final_turn"])
         fact = scenario.params["critical_fact"]
         if next_turn >= final_turn:

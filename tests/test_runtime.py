@@ -11,9 +11,11 @@ import uuid
 from pathlib import Path
 
 from agent.model_client import MessagesClient
+from agent.replay import replay_run
 from agent.runtime import AgentRuntime, RuntimeLimits
 from agent.store import EventStore
 from mockllm.server import create_server
+from mockllm.protocol import request_token_count
 
 
 class RuntimeIntegrationTests(unittest.TestCase):
@@ -153,6 +155,38 @@ class RuntimeIntegrationTests(unittest.TestCase):
             self.assertTrue((self.workspace / f"s12-{number}.txt").is_file())
         response_attempts = self.events(outcome.run_id, "model_attempt")
         self.assertTrue(any(event.payload["outcome"] == "retry" for event in response_attempts))
+
+    def test_s8_compacts_below_limit_and_recalls_turn_three_at_turn_forty(self) -> None:
+        outcome = self.run_scenario("S8", "Complete the 40-turn memory exercise.")
+        self.assertEqual(outcome.status, "completed")
+        self.assertIn("Recall verified: ORCHID-73", outcome.final_text)
+        planned = self.events(outcome.run_id, "model_request_planned")
+        counts = [
+            request_token_count(event.payload["request"])
+            for event in planned
+        ]
+        self.assertEqual(len(planned), 40)
+        self.assertLessEqual(max(counts), 8_000)
+        compacted = self.events(outcome.run_id, "context_compacted")
+        self.assertGreater(len(compacted), 0)
+        self.assertTrue(any(event.payload["facts"] for event in compacted))
+
+    def test_trace_and_offline_replay_match_recorded_decisions(self) -> None:
+        outcome = self.run_scenario("S1")
+        trace = self.workspace / "traces" / f"{outcome.run_id}.jsonl"
+        self.assertTrue(trace.is_file())
+        records = [
+            json.loads(line)
+            for line in trace.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertEqual(
+            len(records),
+            len(self.store.load_events(outcome.run_id)),
+        )
+        self.assertTrue(all(record["trace_version"] == 1 for record in records))
+        report = replay_run(self.store, outcome.run_id)
+        self.assertTrue(report.matches_recording, report.errors)
+        self.assertEqual(report.terminal_status, "completed")
 
     def test_model_and_tool_commits_are_idempotent(self) -> None:
         run_id = self.store.create_run(

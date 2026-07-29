@@ -10,6 +10,7 @@ from pathlib import Path
 
 from agent.model_client import MessagesClient
 from agent.runtime import AgentRuntime
+from agent.replay import replay_run
 from agent.store import EventStore, RunNotFoundError
 
 
@@ -94,7 +95,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.command == "replay":
-        parser.error("offline replay is implemented in milestone M6")
+        workspace = args.workspace.resolve()
+        store = EventStore(workspace / "agent.db")
+        store.initialize()
+        try:
+            report = replay_run(store, args.run_id)
+        except RunNotFoundError:
+            parser.error(f"run {args.run_id!r} does not exist")
+        print(
+            json.dumps(
+                {
+                    "run_id": report.run_id,
+                    "matches_recording": report.matches_recording,
+                    "decision_count": report.decision_count,
+                    "decision_hash": report.decision_hash,
+                    "terminal_status": report.terminal_status,
+                    "errors": list(report.errors),
+                },
+                sort_keys=True,
+            )
+        )
+        return 0 if report.matches_recording else 1
     _store, runtime = _build_runtime(args)
     try:
         if args.command == "run":
