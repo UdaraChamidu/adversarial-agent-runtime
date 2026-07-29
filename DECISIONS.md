@@ -36,6 +36,18 @@ released by the OS after `kill -9`.
 boundary. Filesystem confinement, URL allow-listing, process limits, tool schema
 validation, and email capabilities will be deterministic runtime checks.
 
+**Privileged intent comes only from the original task.** Email is disabled unless
+that immutable task explicitly grants one send to a named address. The model and
+tool data can never add a grant or change its recipient. File paths reject both
+slash styles, drives, traversal, and symlinks. HTTP requires an exact loopback
+origin and refuses redirects.
+
+**Python is fail-closed but not a perfect Windows sandbox.** Code is AST-checked
+against a small module allow-list and denied filesystem/network/dynamic access;
+wall time and output are bounded, with Unix resource limits. Without a Windows
+job object or container, OS-grade memory/network isolation remains unsafe and is
+kept as a documented failing eval rather than overstated.
+
 **Adversarial fixtures mix reviewability and variation.** Five readable red-team
 payloads document the expected trust boundaries, while a seeded generator changes
 wrappers, encodings, and privileged requests. The chaos primitive kills an OS

@@ -17,7 +17,8 @@ local challenge environment from scratch:
 
 The deterministic tokenizer, hostile mock server, seeded process-kill primitive,
 public/generated red-team corpus, and Part A SQLite durability core are
-implemented. The current 40-test suite covers their contracts.
+implemented. All five tools and the trusted-task capability gate are also
+implemented. The current 60-test suite covers their contracts.
 
 The durability unit suite proves one simulated email row after retries, concurrent
 callers, and injected failures at every SQLite transaction boundary. This is not
@@ -102,3 +103,21 @@ share one `BEGIN IMMEDIATE` transaction. A retry with the same internal tool
 occurrence returns its stored result. A second occurrence for the same authorized
 logical email slot is deduplicated. Reusing either key with changed content fails
 loudly.
+
+## Tool security contract
+
+- `read_file` and atomic `write_file` normalize both slash styles, reject
+  absolute/drive/traversal paths and symlink components, and stay under
+  `workspace/`.
+- `run_python` parses the AST, allows only a small safe-module set, rejects file,
+  process, network, dynamic-code, and dunder access, and enforces time/output
+  bounds. Unix additionally applies memory/CPU/file-descriptor limits. Windows
+  does not yet provide an OS-grade memory or network namespace; this remains an
+  explicit limitation.
+- `http_get` requires an exact configured origin, permits only localhost/literal
+  loopback, rechecks DNS results, rejects userinfo, and refuses redirects.
+- `send_email` requires an immutable capability parsed from an explicit original
+  task such as “send exactly one email to …”. Tool/model content cannot create or
+  widen that capability or change its recipient.
+- Tool outputs are serialized with `trust: untrusted_tool_data`; model claims do
+  not change recorded tool status.
