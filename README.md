@@ -18,12 +18,18 @@ local challenge environment from scratch:
 The deterministic tokenizer, hostile mock server, seeded process-kill primitive,
 public/generated red-team corpus, and Part A SQLite durability core are
 implemented. All five tools and the trusted-task capability gate are also
-implemented. The current 60-test suite covers their contracts.
+implemented. The durable Messages client, event-derived loop, and working
+`run`/`resume` CLI now pass S1–S7 and S9–S12. The current 71-test suite covers
+their contracts.
 
 The durability unit suite proves one simulated email row after retries, concurrent
 callers, and injected failures at every SQLite transaction boundary. This is not
 yet the full R2 claim: the end-to-end agent resume path and 100 external process
 kills still need to pass.
+
+S8 is not claimed yet: the loop currently stops legibly before sending a request
+above 8,000 tokens, but context compaction and turn-40 recall are the next
+separate milestone.
 
 See `TIMELOG.md` for actual work time and `DECISIONS.md` for architecture choices.
 Generated runtime state will be confined to `workspace/`.
@@ -50,6 +56,22 @@ python scripts/tasks.py chaos
 ```
 
 Commands are added only when their implementation and contract tests exist.
+
+Example with the mock server running:
+
+```sh
+python -m agent run \
+  --task "Read brief.txt safely." \
+  --scenario S1 \
+  --workspace workspace \
+  --base-url http://127.0.0.1:8765
+
+python -m agent resume RUN_ID --workspace workspace
+```
+
+Each logical request is planned once in SQLite. Only a complete, schema-valid
+response is committed. S5/S6/S12 retry attempts are recorded, and partial
+responses never execute tools.
 
 ## Mock model contract
 

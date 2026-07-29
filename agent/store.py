@@ -127,6 +127,40 @@ class EventStore:
                     FOREIGN KEY (run_id) REFERENCES runs(run_id)
                 );
 
+                CREATE TABLE IF NOT EXISTS model_requests (
+                    run_id TEXT NOT NULL,
+                    request_id TEXT NOT NULL,
+                    request_json TEXT NOT NULL,
+                    event_seq INTEGER NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (run_id, request_id),
+                    FOREIGN KEY (run_id, event_seq) REFERENCES events(run_id, seq)
+                );
+
+                CREATE TABLE IF NOT EXISTS model_responses (
+                    run_id TEXT NOT NULL,
+                    request_id TEXT NOT NULL,
+                    response_json TEXT NOT NULL,
+                    event_seq INTEGER NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (run_id, request_id),
+                    FOREIGN KEY (run_id, event_seq) REFERENCES events(run_id, seq)
+                );
+
+                CREATE TABLE IF NOT EXISTS tool_results (
+                    run_id TEXT NOT NULL,
+                    occurrence_key TEXT NOT NULL,
+                    response_seq INTEGER NOT NULL,
+                    tool_index INTEGER NOT NULL,
+                    tool_name TEXT NOT NULL,
+                    input_hash TEXT NOT NULL,
+                    result_json TEXT NOT NULL,
+                    event_seq INTEGER NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY (run_id, occurrence_key),
+                    FOREIGN KEY (run_id, event_seq) REFERENCES events(run_id, seq)
+                );
+
                 CREATE TABLE IF NOT EXISTS emails (
                     email_id TEXT PRIMARY KEY,
                     run_id TEXT NOT NULL,
@@ -259,6 +293,204 @@ class EventStore:
             except BaseException:
                 self._rollback(connection)
                 raise
+
+    def plan_model_request(
+        self, run_id: str, request_id: str, request: dict[str, Any]
+    ) -> Event:
+        request_json = canonical_json(request)
+        with self._connect() as connection:
+            self._begin(connection)
+            try:
+                existing = connection.execute(
+                    """
+                    SELECT request_json, event_seq FROM model_requests
+                    WHERE run_id = ? AND request_id = ?
+                    """,
+                    (run_id, request_id),
+                ).fetchone()
+                if existing is not None:
+                    if existing["request_json"] != request_json:
+                        raise IdempotencyConflictError(
+                            "model request id was reused with different content"
+                        )
+                    event = self._load_event_in_transaction(
+                        connection, run_id, int(existing["event_seq"])
+                    )
+                    connection.commit()
+                    return event
+                event = self._append_event_in_transaction(
+                    connection,
+                    run_id,
+                    "model_request_planned",
+                    {"request_id": request_id, "request": request},
+                )
+                connection.execute(
+                    """
+                    INSERT INTO model_requests(
+                        run_id, request_id, request_json, event_seq, created_at
+                    ) VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (run_id, request_id, request_json, event.seq, event.created_at),
+                )
+                connection.commit()
+                return event
+            except BaseException:
+                self._rollback(connection)
+                raise
+
+    def commit_model_response(
+        self, run_id: str, request_id: str, response: dict[str, Any]
+    ) -> Event:
+        response_json = canonical_json(response)
+        with self._connect() as connection:
+            self._begin(connection)
+            try:
+                request = connection.execute(
+                    """
+                    SELECT 1 FROM model_requests
+                    WHERE run_id = ? AND request_id = ?
+                    """,
+                    (run_id, request_id),
+                ).fetchone()
+                if request is None:
+                    raise StoreError("cannot commit a response for an unplanned request")
+                existing = connection.execute(
+                    """
+                    SELECT response_json, event_seq FROM model_responses
+                    WHERE run_id = ? AND request_id = ?
+                    """,
+                    (run_id, request_id),
+                ).fetchone()
+                if existing is not None:
+                    if existing["response_json"] != response_json:
+                        raise IdempotencyConflictError(
+                            "model response changed for the same logical request"
+                        )
+                    event = self._load_event_in_transaction(
+                        connection, run_id, int(existing["event_seq"])
+                    )
+                    connection.commit()
+                    return event
+                event = self._append_event_in_transaction(
+                    connection,
+                    run_id,
+                    "model_response_committed",
+                    {
+                        "request_id": request_id,
+                        "response": response,
+                        "usage": response.get("usage", {}),
+                    },
+                )
+                connection.execute(
+                    """
+                    INSERT INTO model_responses(
+                        run_id, request_id, response_json, event_seq, created_at
+                    ) VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (run_id, request_id, response_json, event.seq, event.created_at),
+                )
+                connection.commit()
+                return event
+            except BaseException:
+                self._rollback(connection)
+                raise
+
+    def commit_tool_result(
+        self,
+        *,
+        run_id: str,
+        occurrence_key: str,
+        response_seq: int,
+        tool_index: int,
+        tool_name: str,
+        input_hash: str,
+        result: dict[str, Any],
+    ) -> Event:
+        result_json = canonical_json(result)
+        identity = (response_seq, tool_index, tool_name, input_hash)
+        with self._connect() as connection:
+            self._begin(connection)
+            try:
+                existing = connection.execute(
+                    """
+                    SELECT * FROM tool_results
+                    WHERE run_id = ? AND occurrence_key = ?
+                    """,
+                    (run_id, occurrence_key),
+                ).fetchone()
+                if existing is not None:
+                    stored_identity = (
+                        int(existing["response_seq"]),
+                        int(existing["tool_index"]),
+                        existing["tool_name"],
+                        existing["input_hash"],
+                    )
+                    if stored_identity != identity or existing["result_json"] != result_json:
+                        raise IdempotencyConflictError(
+                            "tool occurrence was reused with different input or result"
+                        )
+                    event = self._load_event_in_transaction(
+                        connection, run_id, int(existing["event_seq"])
+                    )
+                    connection.commit()
+                    return event
+                event = self._append_event_in_transaction(
+                    connection,
+                    run_id,
+                    "tool_result_committed",
+                    {
+                        "occurrence_key": occurrence_key,
+                        "response_seq": response_seq,
+                        "tool_index": tool_index,
+                        "tool_name": tool_name,
+                        "input_hash": input_hash,
+                        "result": result,
+                    },
+                )
+                connection.execute(
+                    """
+                    INSERT INTO tool_results(
+                        run_id, occurrence_key, response_seq, tool_index,
+                        tool_name, input_hash, result_json, event_seq, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        run_id,
+                        occurrence_key,
+                        response_seq,
+                        tool_index,
+                        tool_name,
+                        input_hash,
+                        result_json,
+                        event.seq,
+                        event.created_at,
+                    ),
+                )
+                connection.commit()
+                return event
+            except BaseException:
+                self._rollback(connection)
+                raise
+
+    @staticmethod
+    def _load_event_in_transaction(
+        connection: sqlite3.Connection, run_id: str, seq: int
+    ) -> Event:
+        row = connection.execute(
+            "SELECT * FROM events WHERE run_id = ? AND seq = ?", (run_id, seq)
+        ).fetchone()
+        if row is None:
+            raise StoreError(f"event {run_id}:{seq} is missing")
+        return Event(
+            run_id=row["run_id"],
+            seq=int(row["seq"]),
+            event_id=row["event_id"],
+            event_type=row["event_type"],
+            payload=json.loads(row["payload_json"]),
+            prev_hash=row["prev_hash"],
+            event_hash=row["event_hash"],
+            created_at=row["created_at"],
+        )
 
     def _append_event_in_transaction(
         self,

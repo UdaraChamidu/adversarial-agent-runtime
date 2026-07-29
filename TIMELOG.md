@@ -16,11 +16,12 @@ the nearest minute.
 | 2026-07-28 | Infrastructure | 0:05 | Added seeded process-group termination, public and generated red-team corpora, the authorized S1 email fixture, and six harness tests. |
 | 2026-07-28 | Part A | 0:04 | Implemented the append-only hash-chained SQLite store, pure run reducer, OS run lock, and atomic email effect with crash/concurrency tests. |
 | 2026-07-29 | Part A | 0:04 | Added conservative argument repair, exact schemas, trusted-task email capabilities, five bounded tools, and 20 adversarial/security tests. |
+| 2026-07-29 | Part A | 0:16 | Added idempotent model/request/result records, bounded retry client, event-derived parallel loop, working run/resume CLI, and S1–S7/S9–S12 integration tests. |
 
 ## Totals
 
 | Budget area | Used | Cap |
 |---|---:|---:|
 | Challenge infrastructure and planning | 0:35 | Not specified in written brief |
-| Part A runtime | 0:08 | 6:00 |
+| Part A runtime | 0:24 | 6:00 |
 | Part B framework runtime | 0:00 | 2:00 |

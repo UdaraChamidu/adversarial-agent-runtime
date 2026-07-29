@@ -32,6 +32,18 @@ from run ID, committed response sequence, and block position; repeated external
 cross-platform advisory file lock prevents concurrent resume owners and is
 released by the OS after `kill -9`.
 
+**Only complete responses become decisions.** The client buffers and validates
+the whole HTTP body before the store accepts it. Logical request IDs, responses,
+and tool results each have unique SQLite records, so resume retries an unfinished
+boundary instead of guessing. Parallel tools execute concurrently but their
+results commit in source order; email remains atomic at its earlier effect
+boundary.
+
+**Model prose cannot overwrite tool truth.** A final answer following a failed
+tool is checked for success claims. If contradictory, the runtime records a
+grounding correction and requests a corrected answer within the same limits. It
+never changes the underlying failed result.
+
 **Security is enforced outside the model.** Prompt wording is not a security
 boundary. Filesystem confinement, URL allow-listing, process limits, tool schema
 validation, and email capabilities will be deterministic runtime checks.
