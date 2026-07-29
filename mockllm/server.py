@@ -200,8 +200,11 @@ class MockRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Connection", "close")
         self.end_headers()
-        self.wfile.write(body[:cut])
-        self.wfile.flush()
+        try:
+            self.wfile.write(body[:cut])
+            self.wfile.flush()
+        except OSError:
+            pass
         try:
             self.connection.shutdown(socket.SHUT_RDWR)
         except OSError:
@@ -231,7 +234,10 @@ class MockRequestHandler(BaseHTTPRequestHandler):
         for name, value in (headers or {}).items():
             self.send_header(name, value)
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except OSError:
+            pass
         self.close_connection = True
 
 

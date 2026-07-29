@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from harness.chaos import delay_schedule, run_with_forced_kill
+from harness.chaos import delay_schedule, run_agent_chaos, run_with_forced_kill
 from harness.redteam import generated_payloads, load_corpus, mount_payloads
 
 
@@ -28,6 +28,19 @@ class ChaosPrimitiveTests(unittest.TestCase):
         self.assertTrue(outcome.killed)
         self.assertNotEqual(outcome.returncode, 0)
         self.assertLess(outcome.elapsed_seconds, 5)
+
+    def test_agent_chaos_resumes_to_one_email_per_logical_run(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            report = run_agent_chaos(
+                runs=3,
+                workspace_root=Path(temporary) / "chaos",
+                seed=19,
+                minimum_delay=0.003,
+                maximum_delay=0.008,
+            )
+        self.assertEqual(report["failed"], 0, report["failures"])
+        self.assertEqual(report["passed"], 3)
+        self.assertGreater(report["kills_observed"], 0)
 
 
 class RedTeamCorpusTests(unittest.TestCase):

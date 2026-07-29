@@ -22,10 +22,11 @@ implemented. The durable Messages client, event-derived loop, and working
 `run`/`resume` CLI now pass S1–S7 and S9–S12. The current 71-test suite covers
 their contracts.
 
-The durability unit suite proves one simulated email row after retries, concurrent
-callers, and injected failures at every SQLite transaction boundary. This is not
-yet the full R2 claim: the end-to-end agent resume path and 100 external process
-kills still need to pass.
+R2 now passes end to end. In the recorded batch, 100 distinct logical email runs
+were each hard-killed in a separate process, resumed in a fresh process, and
+checked for a valid event chain, completed state, and exactly one email row:
+`100/100` passed with `100` observed kills. The machine-readable result is
+`evidence/chaos-100.json`.
 
 S8 is not claimed yet: the loop currently stops legibly before sending a request
 above 8,000 tokens, but context compaction and turn-40 recall are the next
@@ -108,7 +109,8 @@ python -m harness.chaos --runs 10 --seed 7 -- python your_target.py
 ```
 
 The final `make chaos` command will wrap this primitive around `agent run` and
-`agent resume`, then assert the SQLite email invariant.
+`agent resume`, then assert the SQLite email invariant. Set `CHAOS_RUNS` to use a
+smaller local smoke run; the default is 100.
 
 `harness/redteam/payloads/` contains public provenance, filesystem, network,
 encoding, and email-injection attacks. The corpus module also creates seeded

@@ -10,9 +10,13 @@ import signal
 import subprocess
 import sys
 import time
+import uuid
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+from agent.store import EventStore, RunNotFoundError
+from mockllm.server import create_server
 
 
 @dataclass(frozen=True)
@@ -128,8 +132,155 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def run_agent_chaos(
+    *,
+    runs: int,
+    workspace_root: Path,
+    seed: int,
+    minimum_delay: float = 0.002,
+    maximum_delay: float = 0.030,
+) -> dict[str, object]:
+    """Kill one process per logical email run, resume, and verify exactly once."""
+
+    if runs <= 0:
+        raise ValueError("runs must be positive")
+    workspace_root.mkdir(parents=True, exist_ok=True)
+    batch_id = uuid.uuid4().hex[:10]
+    server = create_server(port=0, seed=seed)
+    thread = __import__("threading").Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    base_url = f"http://{host}:{port}"
+    delays = delay_schedule(
+        runs, seed=seed, minimum=minimum_delay, maximum=maximum_delay
+    )
+    passed = 0
+    killed_count = 0
+    failures: list[dict[str, object]] = []
+    try:
+        for index, delay in enumerate(delays, start=1):
+            workspace = workspace_root / f"{batch_id}-{index:03d}"
+            workspace.mkdir(parents=True, exist_ok=False)
+            run_id = f"chaos-{batch_id}-{index:03d}"
+            task = (
+                "Send exactly one email to recipient@example.test "
+                "with the approved chaos message."
+            )
+            run_command = [
+                sys.executable,
+                "-m",
+                "agent",
+                "run",
+                "--task",
+                task,
+                "--scenario",
+                "S1",
+                "--run-id",
+                run_id,
+                "--workspace",
+                str(workspace),
+                "--base-url",
+                base_url,
+            ]
+            killed = run_with_forced_kill(
+                run_command,
+                cwd=Path.cwd(),
+                delay_seconds=delay,
+                environment=os.environ.copy(),
+            )
+            killed_count += int(killed.killed)
+
+            store = EventStore(workspace / "agent.db")
+            store.initialize()
+            try:
+                store.load_events(run_id)
+                finish_command = [
+                    sys.executable,
+                    "-m",
+                    "agent",
+                    "resume",
+                    run_id,
+                    "--workspace",
+                    str(workspace),
+                    "--base-url",
+                    base_url,
+                ]
+            except RunNotFoundError:
+                finish_command = run_command
+            finished = subprocess.run(
+                finish_command,
+                cwd=Path.cwd(),
+                env=os.environ.copy(),
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            emails = store.list_emails(run_id)
+            state = store.rebuild_state(run_id)
+            try:
+                store.verify_event_chain(run_id)
+                chain_ok = True
+            except Exception:
+                chain_ok = False
+            if (
+                finished.returncode == 0
+                and state.status == "completed"
+                and len(emails) == 1
+                and chain_ok
+            ):
+                passed += 1
+            else:
+                failures.append(
+                    {
+                        "iteration": index,
+                        "killed": killed.killed,
+                        "finish_returncode": finished.returncode,
+                        "email_count": len(emails),
+                        "status": state.status,
+                        "chain_ok": chain_ok,
+                        "stdout": finished.stdout,
+                        "stderr": finished.stderr,
+                    }
+                )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    return {
+        "runs": runs,
+        "passed": passed,
+        "failed": runs - passed,
+        "kills_observed": killed_count,
+        "seed": seed,
+        "batch_id": batch_id,
+        "failures": failures,
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    selected_argv = list(argv) if argv is not None else sys.argv[1:]
+    if selected_argv and selected_argv[0] == "agent":
+        parser = argparse.ArgumentParser(
+            description="Run end-to-end kill/resume email chaos trials"
+        )
+        parser.add_argument("mode", choices=["agent"])
+        parser.add_argument("--runs", type=int, default=100)
+        parser.add_argument("--seed", type=int, default=20260728)
+        parser.add_argument(
+            "--workspace-root", type=Path, default=Path("workspace") / "chaos"
+        )
+        args = parser.parse_args(selected_argv)
+        report = run_agent_chaos(
+            runs=args.runs,
+            workspace_root=args.workspace_root.resolve(),
+            seed=args.seed,
+        )
+        print(json.dumps(report, sort_keys=True), flush=True)
+        return 0 if report["failed"] == 0 and report["kills_observed"] > 0 else 1
+
+    args = build_parser().parse_args(selected_argv)
     command = list(args.command)
     if command and command[0] == "--":
         command = command[1:]

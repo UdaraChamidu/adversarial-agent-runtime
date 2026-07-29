@@ -39,6 +39,11 @@ boundary instead of guessing. Parallel tools execute concurrently but their
 results commit in source order; email remains atomic at its earlier effect
 boundary.
 
+**Chaos verifies the public process boundary.** Each logical trial uses a new
+workspace and run ID, kills the CLI process at a seeded random delay, then starts
+a separate resume process. Success requires a completed reducer state, a valid
+hash chain, and exactly one email row—not merely a zero exit code.
+
 **Model prose cannot overwrite tool truth.** A final answer following a failed
 tool is checked for success claims. If contradictory, the runtime records a
 grounding correction and requests a corrected answer within the same limits. It

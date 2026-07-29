@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sqlite3
 import sys
@@ -40,8 +41,16 @@ def eval_command() -> int:
 
 
 def chaos() -> int:
-    print("The chaos harness will be added before Part A durability work.", file=sys.stderr)
-    return 2
+    from harness.chaos import run_agent_chaos
+
+    runs = int(os.environ.get("CHAOS_RUNS", "100"))
+    report = run_agent_chaos(
+        runs=runs,
+        workspace_root=WORKSPACE / "chaos",
+        seed=20260728,
+    )
+    print(__import__("json").dumps(report, sort_keys=True))
+    return 0 if report["failed"] == 0 and report["kills_observed"] > 0 else 1
 
 
 def clean() -> int:
