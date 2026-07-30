@@ -68,7 +68,7 @@ def compact_messages(
         ]
         if count_request_tokens(candidate) <= target_tokens:
             retained = candidate_units
-        elif retained:
+        else:
             break
 
     messages = prefix + [message for unit in retained for message in unit]

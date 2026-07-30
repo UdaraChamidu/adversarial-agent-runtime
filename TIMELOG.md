@@ -19,11 +19,12 @@ the nearest minute.
 | 2026-07-29 | Part A | 0:16 | Added idempotent model/request/result records, bounded retry client, event-derived parallel loop, working run/resume CLI, and S1–S7/S9–S12 integration tests. |
 | 2026-07-29 | Part A | 0:05 | Connected external process chaos to run/resume and recorded 100/100 trials with 100 hard kills and exactly one email each. |
 | 2026-07-29 | Part A | 0:30 | Implemented extractive/source-linked compaction, passed S8 turn-40 recall under the 8k ceiling, added atomic JSONL traces, and offline decision replay. |
+| 2026-07-30 | Part A | 0:12 | Built the 16-case eval board, stored baseline/diffing, two honest failing cases, Make integration, and Part A release documentation checks. |
 
 ## Totals
 
 | Budget area | Used | Cap |
 |---|---:|---:|
 | Challenge infrastructure and planning | 0:35 | Not specified in written brief |
-| Part A runtime | 0:59 | 6:00 |
+| Part A runtime | 1:11 | 6:00 |
 | Part B framework runtime | 0:00 | 2:00 |

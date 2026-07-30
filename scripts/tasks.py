@@ -14,6 +14,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = ROOT / "workspace"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def setup() -> int:
@@ -36,8 +38,9 @@ def test() -> int:
 
 
 def eval_command() -> int:
-    print("The eval runner will be added in milestone M7.", file=sys.stderr)
-    return 2
+    from evals.runner import main as eval_main
+
+    return eval_main([])
 
 
 def chaos() -> int:

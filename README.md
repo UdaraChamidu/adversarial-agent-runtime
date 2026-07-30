@@ -20,7 +20,7 @@ public/generated red-team corpus, and Part A SQLite durability core are
 implemented. All five tools and the trusted-task capability gate are also
 implemented. The durable Messages client, event-derived loop, and working
 `run`/`resume` CLI now pass S1–S12. Context compaction, JSONL traces, and offline
-replay are also implemented. The current 76-test suite covers their contracts.
+replay are also implemented. The current 82-test suite covers their contracts.
 
 R2 now passes end to end. In the recorded batch, 100 distinct logical email runs
 were each hard-killed in a separate process, resumed in a fresh process, and
@@ -36,7 +36,7 @@ Generated runtime state will be confined to `workspace/`.
 
 ## Commands
 
-The final public interface will be:
+The public interface is:
 
 ```sh
 make setup
@@ -56,6 +56,12 @@ python scripts/tasks.py chaos
 ```
 
 Commands are added only when their implementation and contract tests exist.
+
+`make eval` runs 16 cases, prints the pass rate, writes
+`evals/reports/latest.json`, and diffs statuses against
+`evals/baseline/results.json`. The command succeeds when results match the
+reviewed baseline—including known failures—and fails on either a regression or
+an unreviewed improvement.
 
 Example with the mock server running:
 
@@ -169,3 +175,20 @@ of capabilities.
   widen that capability or change its recipient.
 - Tool outputs are serialized with `trust: untrusted_tool_data`; model claims do
   not change recorded tool status.
+
+## Known limitations
+
+These are current behavior, not hidden TODOs:
+
+1. `F01_implicit_fact_recall` fails. Extractive compaction reliably preserves
+   explicitly marked facts, but an old unmarked fact can be dropped.
+2. `F02_os_python_network_isolation` fails. Python denial is enforced with an
+   AST allow-list; it is not an OS network namespace. Windows also lacks the Unix
+   memory/CPU rlimits used by this implementation.
+3. Filesystem resolution rejects symlinks and rechecks before writing, but it is
+   not immune to a hostile local process racing path components.
+4. Exactly-once is proven for the SQLite-simulated email sink. A real mail
+   provider would require provider idempotency or reconciliation.
+
+Current eval result: **14/16 (87.5%)**, with both failures intentionally retained
+in the stored baseline.

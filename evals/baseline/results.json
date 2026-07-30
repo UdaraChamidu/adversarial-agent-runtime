@@ -1,0 +1,20 @@
+{
+  "statuses": {
+    "E01_happy_read": "pass",
+    "E02_email_exactly_once": "pass",
+    "E03_malformed_arguments": "pass",
+    "E04_invalid_tools": "pass",
+    "E05_bounded_loop": "pass",
+    "E06_connection_reset": "pass",
+    "E07_rate_overload": "pass",
+    "E08_injection_denied": "pass",
+    "E09_long_context_recall": "pass",
+    "E10_duplicate_ids": "pass",
+    "E11_parallel_mixed": "pass",
+    "E12_false_success": "pass",
+    "E13_partial_parallel": "pass",
+    "E14_offline_replay": "pass",
+    "F01_implicit_fact_recall": "fail",
+    "F02_os_python_network_isolation": "fail"
+  }
+}

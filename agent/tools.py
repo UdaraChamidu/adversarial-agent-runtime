@@ -24,6 +24,9 @@ from agent.schemas import SchemaError, tool_definitions, validate_arguments
 from agent.store import EventStore, IdempotencyConflictError
 
 
+PYTHON_NETWORK_ISOLATION = "ast_policy_only"
+
+
 @dataclass(frozen=True)
 class ToolLimits:
     read_bytes: int = 64 * 1024

@@ -88,3 +88,20 @@ reproducible without making the runtime aware of the selected attack.
 **Part B waits for a measured Part A baseline.** Framework code will not begin
 until Part A has recorded scenario, chaos, security, context, and replay results.
 That makes the later comparison evidence-based instead of speculative.
+
+## Three places still unsafe
+
+1. Python isolation is a fail-closed AST policy, not an OS network namespace;
+   Windows also lacks enforced memory limits.
+2. Workspace paths reject traversal and symlinks, but a hostile local process
+   could race a path component between validation and use.
+3. SQLite makes the simulated email atomic. Exactly-once cannot be promised for
+   a real provider that lacks an idempotency key or reconciliation API.
+
+## With two more weeks
+
+I would run Python in a disposable, networkless OS sandbox with cgroup/job-object
+limits; replace path checks with directory-handle-relative operations; add
+provider idempotency plus an outbox reconciler; fuzz JSON repair, paths, URLs, and
+kill points; and broaden memory extraction beyond explicitly marked facts while
+retaining source provenance.
