@@ -126,6 +126,16 @@ class ScenarioContractTests(unittest.TestCase):
         third_text = responses[2]["content"][0]["text"]
         self.assertIn("ORCHID-73", third_text)
 
+    def test_s8_ignores_runtime_owned_step_metadata(self) -> None:
+        request = base_request()
+        first = self.engine.response("S8", request, "s8-independent-1")
+        second_request = append_tool_turn(request, first)
+        second_request["metadata"] = {"runtime_step": 40}
+        second = self.engine.response(
+            "S8", validate_request(second_request), "s8-independent-2"
+        )
+        self.assertTrue(second["content"][0]["text"].startswith("Turn 2 context:"))
+
     def test_s9_reuses_external_id_across_distinct_calls(self) -> None:
         request = base_request()
         first = self.engine.response("S9", request, "s9-1")

@@ -97,6 +97,60 @@ class RuntimeIntegrationTests(unittest.TestCase):
         self.assertEqual(outcome.status, "stopped")
         self.assertEqual(outcome.reason, "no_progress_repeated_tool_call")
         self.assertEqual(len(self.events(outcome.run_id, "model_response_committed")), 3)
+        trace = self.workspace / "traces" / f"{outcome.run_id}.jsonl"
+        self.assertTrue(trace.is_file())
+        self.assertEqual(
+            json.loads(trace.read_text(encoding="utf-8").splitlines()[-1])["event_type"],
+            "run_stopped",
+        )
+
+    def test_step_and_total_token_limits_stop_with_traces(self) -> None:
+        cases = (
+            (
+                "step-budget",
+                RuntimeLimits(step_limit=1, no_progress_limit=50),
+                "step_limit_exceeded",
+            ),
+            (
+                "token-budget",
+                RuntimeLimits(no_progress_limit=50, total_token_limit=1),
+                "total_token_budget_exceeded",
+            ),
+        )
+        for run_id, limits, expected_reason in cases:
+            with self.subTest(reason=expected_reason):
+                runtime = AgentRuntime(
+                    workspace=self.workspace,
+                    store=self.store,
+                    client=MessagesClient(self.base_url, timeout_seconds=2),
+                    limits=limits,
+                )
+                outcome = runtime.start(
+                    task="Read brief.txt safely.",
+                    scenario="S1",
+                    run_id=run_id,
+                )
+                self.assertEqual(outcome.status, "stopped")
+                self.assertEqual(outcome.reason, expected_reason)
+                self.assertTrue(
+                    (self.workspace / "traces" / f"{run_id}.jsonl").is_file()
+                )
+
+    def test_uncompactable_task_fails_durably_with_trace(self) -> None:
+        outcome = self.runtime.start(
+            task="oversized " * 50_000,
+            scenario="S1",
+            run_id="oversized-context",
+        )
+        self.assertEqual(outcome.status, "failed")
+        self.assertTrue(outcome.reason.startswith("context_budget_uncompactable:"))
+        self.assertEqual(self.store.rebuild_state(outcome.run_id).status, "failed")
+        trace = self.workspace / "traces" / f"{outcome.run_id}.jsonl"
+        self.assertTrue(trace.is_file())
+        self.assertEqual(
+            json.loads(trace.read_text(encoding="utf-8").splitlines()[-1])["event_type"],
+            "run_failed",
+        )
 
     def test_s5_and_s6_record_transport_retries(self) -> None:
         reset = self.run_scenario("S5")
@@ -167,6 +221,9 @@ class RuntimeIntegrationTests(unittest.TestCase):
         ]
         self.assertEqual(len(planned), 40)
         self.assertLessEqual(max(counts), 8_000)
+        self.assertTrue(
+            all("runtime_step" not in event.payload["request"]["metadata"] for event in planned)
+        )
         compacted = self.events(outcome.run_id, "context_compacted")
         self.assertGreater(len(compacted), 0)
         self.assertTrue(any(event.payload["facts"] for event in compacted))

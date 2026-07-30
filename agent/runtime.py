@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from agent.events import Event, occurrence_key
-from agent.context import compact_messages, extract_facts
+from agent.context import ContextBudgetError, compact_messages, extract_facts
 from agent.locking import run_lock
 from agent.model_client import Attempt, MessagesClient, ModelClientError
 from agent.policy import derive_capabilities
@@ -109,15 +109,27 @@ class AgentRuntime:
                     "metadata": {
                         "scenario": state.scenario,
                         "request_id": f"req_{run_id}_{len(responses) + 1}",
-                        "runtime_step": len(responses) + 1,
                     },
                 }
                 tokens = request_token_count(request_body)
                 if tokens > CONTEXT_LIMIT:
-                    request_body, compaction = self._compact_request(
-                        run_id, events, request_body
-                    )
+                    try:
+                        request_body, compaction = self._compact_request(
+                            run_id, events, request_body
+                        )
+                    except ContextBudgetError as exc:
+                        return self._stop(
+                            run_id,
+                            f"context_budget_uncompactable:{exc}",
+                            failed=True,
+                        )
                     tokens = request_token_count(request_body)
+                    if tokens > CONTEXT_LIMIT:
+                        return self._stop(
+                            run_id,
+                            f"context_limit_exceeded_after_compaction:{tokens}",
+                            failed=True,
+                        )
                     request_id = request_body["metadata"]["request_id"]
                     if not any(
                         event.event_type == "context_compacted"
@@ -189,6 +201,7 @@ class AgentRuntime:
         self.store.append_event(
             run_id, "run_failed" if failed else "run_stopped", {"reason": reason}
         )
+        export_trace(self.store, run_id, self.workspace / "traces")
         return RuntimeOutcome(run_id, "failed" if failed else "stopped", None, reason)
 
     @staticmethod

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -60,13 +61,12 @@ def _tool_history(request: dict[str, Any]) -> list[str]:
     ]
 
 
-def _tool_round(request: dict[str, Any]) -> int:
-    return sum(
-        1
-        for message in request["messages"]
-        if message.get("role") == "assistant"
-        and any(block.get("type") == "tool_use" for block in _blocks(message))
-    )
+def _growth_round(request: dict[str, Any]) -> int:
+    turns = [
+        int(match.group(1))
+        for match in re.finditer(r"\bTurn ([1-9][0-9]*) context:", _all_text(request))
+    ]
+    return max(turns, default=0)
 
 
 def _all_text(request: dict[str, Any]) -> str:
@@ -194,12 +194,7 @@ class ScenarioEngine:
     def _handle_growing_context(
         self, scenario: Scenario, request: dict[str, Any]
     ) -> tuple[list[dict[str, Any]], str]:
-        runtime_step = request.get("metadata", {}).get("runtime_step")
-        next_turn = (
-            int(runtime_step)
-            if isinstance(runtime_step, int) and runtime_step > 0
-            else _tool_round(request) + 1
-        )
+        next_turn = _growth_round(request) + 1
         final_turn = int(scenario.params["final_turn"])
         fact = scenario.params["critical_fact"]
         if next_turn >= final_turn:

@@ -13,10 +13,15 @@ from typing import Any, Callable
 
 from agent.context import compact_messages
 from agent.model_client import MessagesClient
+from agent.policy import derive_capabilities
 from agent.replay import replay_run
 from agent.runtime import AgentRuntime
 from agent.store import EventStore
-from agent.tools import PYTHON_NETWORK_ISOLATION
+from agent.tools import (
+    PYTHON_NETWORK_ISOLATION,
+    ToolContext,
+    ToolExecutor,
+)
 from mockllm.protocol import request_token_count
 from mockllm.server import create_server
 
@@ -232,6 +237,62 @@ def _offline_replay(environment: EvalEnvironment) -> CaseResult:
     )
 
 
+def _terminal_trace(environment: EvalEnvironment) -> CaseResult:
+    artifacts = environment.run("S4")
+    trace = artifacts.workspace / "traces" / f"{artifacts.outcome.run_id}.jsonl"
+    records = (
+        [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines()]
+        if trace.is_file()
+        else []
+    )
+    passed = (
+        artifacts.outcome.status == "stopped"
+        and bool(records)
+        and records[-1]["event_type"] == "run_stopped"
+    )
+    return CaseResult(
+        passed,
+        {
+            "status": artifacts.outcome.status,
+            "trace_exists": trace.is_file(),
+            "last_event": records[-1]["event_type"] if records else None,
+        },
+    )
+
+
+def _local_model_boundary(_environment: EvalEnvironment) -> CaseResult:
+    external_rejected = False
+    try:
+        MessagesClient("https://example.com")
+    except ValueError:
+        external_rejected = True
+    local = MessagesClient("http://127.0.0.1:8765")
+    return CaseResult(
+        external_rejected and local.endpoint.startswith("http://127.0.0.1:8765/"),
+        {
+            "external_rejected": external_rejected,
+            "local_endpoint": local.endpoint,
+        },
+    )
+
+
+def _oversized_context(environment: EvalEnvironment) -> CaseResult:
+    artifacts = environment.run("S1", "oversized " * 50_000)
+    trace = artifacts.workspace / "traces" / f"{artifacts.outcome.run_id}.jsonl"
+    return CaseResult(
+        artifacts.outcome.status == "failed"
+        and (artifacts.outcome.reason or "").startswith(
+            "context_budget_uncompactable:"
+        )
+        and trace.is_file(),
+        {
+            "status": artifacts.outcome.status,
+            "reason": artifacts.outcome.reason,
+            "trace_exists": trace.is_file(),
+        },
+    )
+
+
 def _implicit_fact_recall(_environment: EvalEnvironment) -> CaseResult:
     units = [
         [
@@ -263,13 +324,30 @@ def _implicit_fact_recall(_environment: EvalEnvironment) -> CaseResult:
     )
 
 
-def _os_network_isolation(_environment: EvalEnvironment) -> CaseResult:
-    passed = PYTHON_NETWORK_ISOLATION == "os_network_namespace"
+def _os_network_isolation(environment: EvalEnvironment) -> CaseResult:
+    workspace = environment.root / f"python-isolation-{uuid.uuid4().hex}"
+    store = EventStore(workspace / "agent.db")
+    store.initialize()
+    run_id = store.create_run(
+        task="Calculate locally.",
+        scenario="S1",
+        run_id=f"eval-python-isolation-{uuid.uuid4().hex}",
+    )
+    executor = ToolExecutor(workspace=workspace, store=store)
+    result = executor.execute(
+        "run_python",
+        {"code": "import socket\nprint(socket.gethostname())"},
+        ToolContext(run_id, "network-probe", derive_capabilities("Calculate locally.")),
+    )
+    policy_denied = not result.ok
+    os_isolated = PYTHON_NETWORK_ISOLATION == "os_network_namespace"
     return CaseResult(
-        passed,
+        policy_denied and os_isolated,
         {
             "required": "os_network_namespace",
             "actual": PYTHON_NETWORK_ISOLATION,
+            "socket_probe_denied": policy_denied,
+            "socket_probe_error": result.error_code,
             "limitation": "Python network denial is AST policy, not an OS namespace",
         },
     )
@@ -291,6 +369,9 @@ def catalog() -> list[EvalCase]:
         _scenario_case("E12_false_success", "S11", adversarial=True, check=_grounding, description="False success is corrected."),
         _scenario_case("E13_partial_parallel", "S12", adversarial=True, check=_partial, description="Interrupted parallel turn executes safely after retry."),
         EvalCase("E14_offline_replay", "observability", False, "Replay validates without a model server.", _offline_replay),
+        EvalCase("E15_terminal_trace", "observability", True, "Stopped runs emit a terminal JSONL trace.", _terminal_trace),
+        EvalCase("E16_local_model_boundary", "security", True, "Model transport rejects external endpoints.", _local_model_boundary),
+        EvalCase("E17_oversized_context", "budget", True, "Uncompactable context fails durably and emits a trace.", _oversized_context),
         EvalCase("F01_implicit_fact_recall", "known-gap", True, "Unmarked old fact survives compaction.", _implicit_fact_recall),
         EvalCase("F02_os_python_network_isolation", "known-gap", True, "Python has OS-grade network isolation.", _os_network_isolation),
     ]

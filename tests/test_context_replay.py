@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from agent.context import compact_messages
+from agent.context import ContextBudgetError, compact_messages
 from agent.replay import replay_run
 from agent.store import EventStore
 
@@ -35,6 +35,16 @@ class ContextCompactionTests(unittest.TestCase):
         self.assertGreater(compacted.dropped_turns, 0)
         self.assertIn("old-7", json.dumps(compacted.messages))
         self.assertEqual(compacted.token_count, count(compacted.messages))
+
+    def test_uncompactable_minimum_raises_specific_error(self) -> None:
+        with self.assertRaises(ContextBudgetError):
+            compact_messages(
+                original_task="oversized " * 100,
+                turn_units=[],
+                facts=[],
+                count_request_tokens=lambda messages: len(json.dumps(messages)),
+                target_tokens=100,
+            )
 
 
 class ReplayValidationTests(unittest.TestCase):

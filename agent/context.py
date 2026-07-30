@@ -14,6 +14,10 @@ _FACT_PATTERN = re.compile(
 )
 
 
+class ContextBudgetError(ValueError):
+    """Raised when even the minimum safe context cannot fit."""
+
+
 @dataclass(frozen=True)
 class Compaction:
     messages: list[dict[str, Any]]
@@ -74,7 +78,7 @@ def compact_messages(
     messages = prefix + [message for unit in retained for message in unit]
     token_count = count_request_tokens(messages)
     if token_count > target_tokens:
-        raise ValueError(
+        raise ContextBudgetError(
             f"minimum compacted context is {token_count} tokens, above {target_tokens}"
         )
     return Compaction(

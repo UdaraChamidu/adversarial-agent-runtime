@@ -14,6 +14,9 @@
     "E12_false_success": "pass",
     "E13_partial_parallel": "pass",
     "E14_offline_replay": "pass",
+    "E15_terminal_trace": "pass",
+    "E16_local_model_boundary": "pass",
+    "E17_oversized_context": "pass",
     "F01_implicit_fact_recall": "fail",
     "F02_os_python_network_isolation": "fail"
   }

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import http.client
+import ipaddress
 import json
+import socket
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -30,6 +33,44 @@ class Attempt:
 AttemptCallback = Callable[[Attempt], None]
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _local_base_url(base_url: str) -> str:
+    parsed = urllib.parse.urlsplit(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("model base URL must be an HTTP(S) URL with a host")
+    if parsed.username or parsed.password:
+        raise ValueError("model base URL credentials are not allowed")
+    if parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
+        raise ValueError("model base URL must not contain a path, query, or fragment")
+    try:
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    except ValueError as exc:
+        raise ValueError("model base URL contains an invalid port") from exc
+    host = parsed.hostname.lower()
+    if host == "localhost":
+        addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        if not addresses or any(
+            not ipaddress.ip_address(result[4][0]).is_loopback
+            for result in addresses
+        ):
+            raise ValueError("model hostname must resolve only to loopback addresses")
+    else:
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError as exc:
+            raise ValueError(
+                "model host must be localhost or a literal loopback address"
+            ) from exc
+        if not address.is_loopback:
+            raise ValueError("model host must be a loopback address")
+    rendered_host = f"[{host}]" if ":" in host else host
+    return f"{parsed.scheme}://{rendered_host}:{port}"
+
+
 class MessagesClient:
     def __init__(
         self,
@@ -39,10 +80,11 @@ class MessagesClient:
         max_attempts: int = 4,
         sleeper: Callable[[float], None] = time.sleep,
     ):
-        self.endpoint = base_url.rstrip("/") + "/v1/messages"
+        self.endpoint = _local_base_url(base_url) + "/v1/messages"
         self.timeout_seconds = timeout_seconds
         self.max_attempts = max_attempts
         self.sleeper = sleeper
+        self._opener = urllib.request.build_opener(_NoRedirect)
 
     def create_message(
         self,
@@ -67,7 +109,7 @@ class MessagesClient:
                 },
             )
             try:
-                with urllib.request.urlopen(
+                with self._opener.open(
                     request, timeout=self.timeout_seconds
                 ) as response:
                     raw = response.read()
