@@ -11,8 +11,9 @@ standard library plus an allowed test runner.
 
 **Challenge infrastructure is a separate contract.** Although the written brief
 calls the mock server and harness supplied, the publisher clarified that they
-must also be built here. Their protocol and scenario tests will be frozen before
-agent implementation so the tests cannot be weakened to fit the agent.
+must also be built here. Their protocol and scenario tests were built first. A
+later audit found S8 progression coupled to runtime step metadata; that coupling
+was removed, and S8 now advances only from fixture-emitted transcript markers.
 
 **The tokenizer favors determinism over vendor imitation.** It counts stable
 Unicode spans in four-byte units and canonicalizes JSON before counting. The same
@@ -71,7 +72,8 @@ validation, and email capabilities will be deterministic runtime checks.
 that immutable task explicitly grants one send to a named address. The model and
 tool data can never add a grant or change its recipient. File paths reject both
 slash styles, drives, traversal, and symlinks. HTTP requires an exact loopback
-origin and refuses redirects.
+origin and refuses redirects. Model transport separately enforces the same
+localhost-only, no-redirect boundary.
 
 **Python is fail-closed but not a perfect Windows sandbox.** Code is AST-checked
 against a small module allow-list and denied filesystem/network/dynamic access;

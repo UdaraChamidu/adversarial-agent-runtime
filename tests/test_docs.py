@@ -26,6 +26,13 @@ class SubmissionDocumentTests(unittest.TestCase):
         self.assertIn("F01_implicit_fact_recall", text)
         self.assertIn("F02_os_python_network_isolation", text)
 
+    def test_readme_reports_part_a_status_without_claiming_part_b(self) -> None:
+        text = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("Part B is intentionally not started", text)
+        self.assertNotIn("framework-backed Part B runtime", text)
+        self.assertIn("89-test suite", text)
+        self.assertIn("17/19 (89.5%)", text)
+
     def test_makefile_exposes_required_targets(self) -> None:
         text = (ROOT / "Makefile").read_text(encoding="utf-8")
         for target in ("setup:", "run:", "test:", "eval:", "chaos:"):
