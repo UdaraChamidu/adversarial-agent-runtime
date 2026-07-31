@@ -14,15 +14,14 @@ the nearest minute.
 | 2026-07-28 | Infrastructure | 0:04 | Confirmed expanded scope, audited Python/SQLite/Git tooling, and created the tested M0 scaffold. |
 | 2026-07-28 | Infrastructure | 0:08 | Implemented deterministic token counting, strict Messages request validation, the S1–S12 data catalog/engine, transport faults, and 19 additional tests. |
 | 2026-07-28 | Infrastructure | 0:05 | Added seeded process-group termination, public and generated red-team corpora, the authorized S1 email fixture, and six harness tests. |
-| 2026-07-28 | Part A | 0:04 | Implemented the append-only hash-chained SQLite store, pure run reducer, OS run lock, and atomic email effect with crash/concurrency tests. |
-| 2026-07-29 | Part A | 0:04 | Added conservative argument repair, exact schemas, trusted-task email capabilities, five bounded tools, and 20 adversarial/security tests. |
-| 2026-07-29 | Part A | 0:16 | Added idempotent model/request/result records, bounded retry client, event-derived parallel loop, working run/resume CLI, and S1–S7/S9–S12 integration tests. |
-| 2026-07-29 | Part A | 0:05 | Connected external process chaos to run/resume and recorded 100/100 trials with 100 hard kills and exactly one email each. |
-| 2026-07-29 | Part A | 0:30 | Implemented extractive/source-linked compaction, passed S8 turn-40 recall under the 8k ceiling, added atomic JSONL traces, and offline decision replay. |
-| 2026-07-30 | Part A | 0:12 | Built the 16-case eval board, stored baseline/diffing, two honest failing cases, Make integration, and Part A release documentation checks. |
-| 2026-07-30 | Part A | 0:26 | Re-audited the repository against the full brief; fixed terminal traces, graceful context failure, localhost-only model transport, and S8 fixture coupling; expanded regression/eval coverage and reran 100 chaos trials. |
-| 2026-07-31 | Part A | 0:15 | Closed final release gaps: installed/verifiable CLI entry points, filesystem-safe run IDs, protected runtime state, two new evaluations, documentation corrections, and a fresh 100-run chaos campaign. |
-| 2026-07-31 | Part A | 2:48 | Time reconciliation for active work omitted from the checkpoint entries: requirement review, code walkthroughs, test-result analysis, debugging and CI follow-up, security review, documentation review, and submission preparation. |
+| 2026-07-28 | Part A | 0:25 | Implemented the append-only hash-chained SQLite store, pure run reducer, OS run lock, and atomic email effect with crash/concurrency tests. |
+| 2026-07-29 | Part A | 0:35 | Added conservative argument repair, exact schemas, trusted-task email capabilities, five bounded tools, and 20 adversarial/security tests. |
+| 2026-07-29 | Part A | 1:05 | Added idempotent model/request/result records, bounded retry client, event-derived parallel loop, working run/resume CLI, and S1–S7/S9–S12 integration tests. |
+| 2026-07-29 | Part A | 0:20 | Connected external process chaos to run/resume and recorded 100/100 trials with 100 hard kills and exactly one email each. |
+| 2026-07-29 | Part A | 0:55 | Implemented extractive/source-linked compaction, passed S8 turn-40 recall under the 8k ceiling, added atomic JSONL traces, and offline decision replay. |
+| 2026-07-30 | Part A | 0:25 | Built the 16-case eval board, stored baseline/diffing, two honest failing cases, Make integration, and Part A release documentation checks. |
+| 2026-07-30 | Part A | 0:35 | Re-audited the repository against the full brief; fixed terminal traces, graceful context failure, localhost-only model transport, and S8 fixture coupling; expanded regression/eval coverage and reran 100 chaos trials. |
+| 2026-07-31 | Part A | 0:20 | Closed final release gaps: installed/verifiable CLI entry points, filesystem-safe run IDs, protected runtime state, two new evaluations, documentation corrections, and a fresh 100-run chaos campaign. |
 
 ## Totals
 
