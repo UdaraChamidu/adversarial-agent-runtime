@@ -22,12 +22,13 @@ the nearest minute.
 | 2026-07-30 | Part A | 0:12 | Built the 16-case eval board, stored baseline/diffing, two honest failing cases, Make integration, and Part A release documentation checks. |
 | 2026-07-30 | Part A | 0:26 | Re-audited the repository against the full brief; fixed terminal traces, graceful context failure, localhost-only model transport, and S8 fixture coupling; expanded regression/eval coverage and reran 100 chaos trials. |
 | 2026-07-31 | Part A | 0:15 | Closed final release gaps: installed/verifiable CLI entry points, filesystem-safe run IDs, protected runtime state, two new evaluations, documentation corrections, and a fresh 100-run chaos campaign. |
+| 2026-07-31 | Part A | 2:48 | Time reconciliation for active work omitted from the checkpoint entries: requirement review, code walkthroughs, test-result analysis, debugging and CI follow-up, security review, documentation review, and submission preparation. |
 
 ## Totals
 
 | Budget area | Used | Cap |
 |---|---:|---:|
 | Challenge infrastructure and planning | 0:35 | Not specified in written brief |
-| Part A runtime | 1:52 | 6:00 |
-| **Total Part A assessment time** | **2:27** | **6:00 Part A cap plus separately disclosed infrastructure** |
+| Part A runtime | 4:40 | 6:00 |
+| **Total Part A assessment time** | **5:15** | **Includes separately disclosed infrastructure and planning** |
 | Part B framework runtime | 0:00 | 2:00 |
