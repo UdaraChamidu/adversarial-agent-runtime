@@ -30,7 +30,6 @@ def setup() -> int:
             "pip",
             "install",
             "--disable-pip-version-check",
-            "--no-build-isolation",
             "--no-deps",
             "--editable",
             str(ROOT),
