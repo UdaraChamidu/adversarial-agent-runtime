@@ -30,8 +30,8 @@ class SubmissionDocumentTests(unittest.TestCase):
         text = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("Part B is intentionally not started", text)
         self.assertNotIn("framework-backed Part B runtime", text)
-        self.assertIn("89-test suite", text)
-        self.assertIn("17/19 (89.5%)", text)
+        self.assertIn("93-test suite", text)
+        self.assertIn("19/21 (90.5%)", text)
 
     def test_makefile_exposes_required_targets(self) -> None:
         text = (ROOT / "Makefile").read_text(encoding="utf-8")

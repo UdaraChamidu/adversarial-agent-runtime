@@ -328,6 +328,35 @@ class RuntimeIntegrationTests(unittest.TestCase):
             1,
         )
 
+    def test_cli_rejects_filesystem_unsafe_run_id(self) -> None:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "agent",
+                "run",
+                "--task",
+                "Read brief.txt safely.",
+                "--scenario",
+                "S1",
+                "--run-id",
+                "../../escaped-trace",
+                "--workspace",
+                str(self.workspace),
+                "--base-url",
+                self.base_url,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("run_id must be", completed.stderr)
+        self.assertFalse(
+            (Path(self.temporary.name) / "escaped-trace.jsonl").exists()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -10,6 +11,16 @@ from mockllm.tokenizer import canonical_json
 
 
 GENESIS_HASH = "0" * 64
+_RUN_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
+
+
+def validate_run_id(run_id: str) -> str:
+    if not isinstance(run_id, str) or _RUN_ID_PATTERN.fullmatch(run_id) is None:
+        raise ValueError(
+            "run_id must be 1-128 ASCII letters, digits, dots, underscores, or "
+            "hyphens, and must start with a letter or digit"
+        )
+    return run_id
 
 
 @dataclass(frozen=True)

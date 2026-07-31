@@ -19,7 +19,7 @@ public/generated red-team corpus, and Part A SQLite durability core are
 implemented. All five tools and the trusted-task capability gate are also
 implemented. The durable Messages client, event-derived loop, and working
 `run`/`resume` CLI now pass S1–S12. Context compaction, JSONL traces, and offline
-replay are also implemented. The current 89-test suite covers their contracts.
+replay are also implemented. The current 93-test suite covers their contracts.
 
 R2 now passes end to end. In the recorded batch, 100 distinct logical email runs
 were each hard-killed in a separate process, resumed in a fresh process, and
@@ -57,8 +57,12 @@ python scripts/tasks.py chaos
 ```
 
 Commands are added only when their implementation and contract tests exist.
+`make setup` performs an editable, dependency-free install so the `agent` and
+`mockllm` console commands are available. On Windows, Python's user Scripts
+directory may not be on `PATH`; the equivalent `python -m` commands above remain
+the supported fallback.
 
-`make eval` runs 19 cases, prints the pass rate, writes
+`make eval` runs 21 cases, prints the pass rate, writes
 `evals/reports/latest.json`, and diffs statuses against
 `evals/baseline/results.json`. The command succeeds when results match the
 reviewed baseline—including known failures—and fails on either a regression or
@@ -94,6 +98,8 @@ python -m agent replay RUN_ID --workspace workspace
 Replay verifies the hash chain, request budgets, response/request pairing, tool
 occurrence identities, result coverage, and terminal decision, then emits a
 stable decision hash.
+Run IDs use a strict filesystem-safe alphabet and length bound before any lock,
+database, or trace operation.
 
 ## Mock model contract
 
@@ -130,7 +136,7 @@ python -m harness.chaos --runs 10 --seed 7 -- python your_target.py
 ```
 
 `make chaos` wraps this primitive around `agent run` and
-`agent resume`, then assert the SQLite email invariant. Set `CHAOS_RUNS` to use a
+`agent resume`, then asserts the SQLite email invariant. Set `CHAOS_RUNS` to use a
 smaller local smoke run; the default is 100.
 
 `harness/redteam/payloads/` contains public provenance, filesystem, network,
@@ -168,7 +174,8 @@ terminal failure and exports its trace instead of raising out of the loop.
 
 - `read_file` and atomic `write_file` normalize both slash styles, reject
   absolute/drive/traversal paths and symlink components, and stay under
-  `workspace/`.
+  `workspace/`. Runtime-managed database, lock, sandbox, and trace paths are not
+  visible to either tool.
 - `run_python` parses the AST, allows only a small safe-module set, rejects file,
   process, network, dynamic-code, and dunder access, and enforces time/output
   bounds. Unix additionally applies memory/CPU/file-descriptor limits. Windows
@@ -198,5 +205,5 @@ These are current behavior, not hidden TODOs:
 4. Exactly-once is proven for the SQLite-simulated email sink. A real mail
    provider would require provider idempotency or reconciliation.
 
-Current eval result: **17/19 (89.5%)**, with both failures intentionally retained
+Current eval result: **19/21 (90.5%)**, with both failures intentionally retained
 in the stored baseline.

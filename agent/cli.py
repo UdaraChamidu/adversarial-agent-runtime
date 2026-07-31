@@ -102,6 +102,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             report = replay_run(store, args.run_id)
         except RunNotFoundError:
             parser.error(f"run {args.run_id!r} does not exist")
+        except ValueError as exc:
+            parser.error(str(exc))
         print(
             json.dumps(
                 {
@@ -116,8 +118,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
         return 0 if report.matches_recording else 1
-    _store, runtime = _build_runtime(args)
     try:
+        _store, runtime = _build_runtime(args)
         if args.command == "run":
             return _print_outcome(
                 runtime.start(
@@ -127,4 +129,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _print_outcome(runtime.resume(args.run_id))
     except RunNotFoundError:
         parser.error(f"run {args.run_id!r} does not exist")
+    except ValueError as exc:
+        parser.error(str(exc))
     return 2

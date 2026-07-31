@@ -17,5 +17,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: make setup
+      - run: agent --help
+      - run: mockllm --help
       - run: make test
       - run: make eval

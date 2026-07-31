@@ -7,7 +7,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from agent.events import occurrence_key
+from agent.events import occurrence_key, validate_run_id
 from agent.locking import RunLockedError, run_lock
 from agent.store import (
     EventStore,
@@ -48,6 +48,29 @@ class EventStoreTests(unittest.TestCase):
                 task="different",
                 scenario="S1",
             )
+
+    def test_run_ids_are_safe_for_filesystem_use(self) -> None:
+        for invalid in (
+            "",
+            ".hidden",
+            "../escaped",
+            "..\\escaped",
+            "with/slash",
+            "with\\backslash",
+            "with space",
+            "line\nbreak",
+            "x" * 129,
+        ):
+            with self.subTest(run_id=invalid):
+                with self.assertRaises(ValueError):
+                    validate_run_id(invalid)
+                with self.assertRaises(ValueError):
+                    self.store.create_run(
+                        run_id=invalid,
+                        task="test",
+                        scenario="S1",
+                    )
+        self.assertEqual(validate_run_id("run.Valid_123-abc"), "run.Valid_123-abc")
 
     def test_append_only_hash_chain_and_reducer(self) -> None:
         self.store.append_event(

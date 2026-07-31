@@ -102,6 +102,35 @@ class ToolExecutorTests(unittest.TestCase):
                 self.assertFalse(result.ok)
                 self.assertEqual(result.error_code, "tool_error")
 
+    def test_runtime_managed_paths_are_not_tool_visible(self) -> None:
+        for index, path in enumerate(
+            (
+                "agent.db",
+                "agent.db-wal",
+                "agent.db-shm",
+                "agent.db-journal",
+                ".locks/run.lock",
+                ".python/code.py",
+                "traces/run.jsonl",
+            )
+        ):
+            with self.subTest(path=path):
+                written = self.executor.execute(
+                    "write_file",
+                    {"path": path, "content": "corrupt"},
+                    self.context(occurrence=f"protected-write-{index}"),
+                )
+                read = self.executor.execute(
+                    "read_file",
+                    {"path": path},
+                    self.context(occurrence=f"protected-read-{index}"),
+                )
+                self.assertFalse(written.ok)
+                self.assertEqual(written.error_code, "policy_denied")
+                self.assertFalse(read.ok)
+                self.assertEqual(read.error_code, "policy_denied")
+        self.store.verify_event_chain(self.run_id)
+
     @unittest.skipUnless(hasattr(os, "symlink"), "symlink support is unavailable")
     def test_symlink_escape_is_denied(self) -> None:
         outside = self.root / "outside"

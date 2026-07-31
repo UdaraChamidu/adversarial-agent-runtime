@@ -6,6 +6,7 @@ import argparse
 import os
 import shutil
 import sqlite3
+import subprocess
 import sys
 import unittest
 from collections.abc import Sequence
@@ -22,10 +23,49 @@ def setup() -> int:
     if sys.version_info < (3, 11):
         print("Python 3.11 or newer is required.", file=sys.stderr)
         return 1
+    installed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "--no-build-isolation",
+            "--no-deps",
+            "--editable",
+            str(ROOT),
+        ],
+        check=False,
+    )
+    if installed.returncode != 0:
+        return installed.returncode
     WORKSPACE.mkdir(parents=True, exist_ok=True)
+    commands = {name: shutil.which(name) for name in ("agent", "mockllm")}
+    missing = [name for name, path in commands.items() if path is None]
+    if missing:
+        print(
+            "Installed console commands are not on PATH in this shell: "
+            + ", ".join(missing)
+            + ". Use the documented 'python -m' form or add Python's Scripts "
+            "directory to PATH."
+        )
+    for module in ("agent", "mockllm"):
+        checked = subprocess.run(
+            [sys.executable, "-m", module, "--help"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            check=False,
+        )
+        if checked.returncode != 0:
+            print(f"Installed module command failed: {module}", file=sys.stderr)
+            return checked.returncode or 1
     print(f"Python: {sys.version.split()[0]}")
     print(f"SQLite: {sqlite3.sqlite_version}")
     print(f"Workspace: {WORKSPACE}")
+    print(f"Agent command: {commands['agent'] or f'{sys.executable} -m agent'}")
+    print(f"Mock command: {commands['mockllm'] or f'{sys.executable} -m mockllm'}")
     return 0
 
 

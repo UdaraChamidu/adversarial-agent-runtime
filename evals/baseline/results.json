@@ -17,6 +17,8 @@
     "E15_terminal_trace": "pass",
     "E16_local_model_boundary": "pass",
     "E17_oversized_context": "pass",
+    "E18_run_id_confinement": "pass",
+    "E19_runtime_state_protected": "pass",
     "F01_implicit_fact_recall": "fail",
     "F02_os_python_network_isolation": "fail"
   }

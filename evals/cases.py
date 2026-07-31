@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from agent.context import compact_messages
+from agent.events import validate_run_id
 from agent.model_client import MessagesClient
 from agent.policy import derive_capabilities
 from agent.replay import replay_run
@@ -293,6 +294,49 @@ def _oversized_context(environment: EvalEnvironment) -> CaseResult:
     )
 
 
+def _run_id_confinement(environment: EvalEnvironment) -> CaseResult:
+    rejected = False
+    try:
+        validate_run_id("../../escaped-trace")
+    except ValueError:
+        rejected = True
+    outside = environment.root / "escaped-trace.jsonl"
+    return CaseResult(
+        rejected and not outside.exists(),
+        {"unsafe_id_rejected": rejected, "outside_trace_exists": outside.exists()},
+    )
+
+
+def _runtime_state_protected(environment: EvalEnvironment) -> CaseResult:
+    workspace = environment.root / f"protected-state-{uuid.uuid4().hex}"
+    store = EventStore(workspace / "agent.db")
+    store.initialize()
+    run_id = store.create_run(
+        task="Write a report.",
+        scenario="S1",
+        run_id=f"eval-protected-state-{uuid.uuid4().hex}",
+    )
+    executor = ToolExecutor(workspace=workspace, store=store)
+    result = executor.execute(
+        "write_file",
+        {"path": "agent.db", "content": "corrupt"},
+        ToolContext(run_id, "database-overwrite", derive_capabilities("Write a report.")),
+    )
+    chain_ok = True
+    try:
+        store.verify_event_chain(run_id)
+    except Exception:
+        chain_ok = False
+    return CaseResult(
+        not result.ok and result.error_code == "policy_denied" and chain_ok,
+        {
+            "write_allowed": result.ok,
+            "error_code": result.error_code,
+            "event_chain_valid": chain_ok,
+        },
+    )
+
+
 def _implicit_fact_recall(_environment: EvalEnvironment) -> CaseResult:
     units = [
         [
@@ -372,6 +416,8 @@ def catalog() -> list[EvalCase]:
         EvalCase("E15_terminal_trace", "observability", True, "Stopped runs emit a terminal JSONL trace.", _terminal_trace),
         EvalCase("E16_local_model_boundary", "security", True, "Model transport rejects external endpoints.", _local_model_boundary),
         EvalCase("E17_oversized_context", "budget", True, "Uncompactable context fails durably and emits a trace.", _oversized_context),
+        EvalCase("E18_run_id_confinement", "security", True, "Unsafe run IDs cannot escape the trace directory.", _run_id_confinement),
+        EvalCase("E19_runtime_state_protected", "security", True, "Tools cannot overwrite runtime-managed state.", _runtime_state_protected),
         EvalCase("F01_implicit_fact_recall", "known-gap", True, "Unmarked old fact survives compaction.", _implicit_fact_recall),
         EvalCase("F02_os_python_network_isolation", "known-gap", True, "Python has OS-grade network isolation.", _os_network_isolation),
     ]

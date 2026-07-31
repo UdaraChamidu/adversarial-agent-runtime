@@ -6,6 +6,7 @@ import os
 import tempfile
 from pathlib import Path
 
+from agent.events import validate_run_id
 from agent.store import EventStore
 from mockllm.tokenizer import canonical_json
 
@@ -14,6 +15,7 @@ TRACE_VERSION = 1
 
 
 def export_trace(store: EventStore, run_id: str, trace_directory: Path) -> Path:
+    validate_run_id(run_id)
     trace_directory.mkdir(parents=True, exist_ok=True)
     destination = trace_directory / f"{run_id}.jsonl"
     descriptor, temporary_name = tempfile.mkstemp(

@@ -152,6 +152,19 @@ class ToolExecutor:
         self.workspace = workspace.resolve()
         self.workspace.mkdir(parents=True, exist_ok=True)
         self.store = store
+        database = store.database_path.resolve()
+        self._protected_files = frozenset(
+            {
+                database,
+                Path(str(database) + "-journal"),
+                Path(str(database) + "-shm"),
+                Path(str(database) + "-wal"),
+            }
+        )
+        self._protected_directories = tuple(
+            (self.workspace / name).resolve()
+            for name in (".locks", ".python", "traces")
+        )
         self.allowed_origins = frozenset(
             self._normalize_origin(origin) for origin in (allowed_origins or set())
         )
@@ -224,6 +237,11 @@ class ToolExecutor:
             resolved.relative_to(self.workspace)
         except ValueError as exc:
             raise ValueError("path escapes the workspace") from exc
+        if resolved in self._protected_files or any(
+            resolved == directory or directory in resolved.parents
+            for directory in self._protected_directories
+        ):
+            raise PolicyDeniedError("runtime-managed paths are not available to tools")
         return resolved
 
     def _execute_read_file(
@@ -368,9 +386,12 @@ class ToolExecutor:
                 status = response.status
                 content_type = response.headers.get("Content-Type", "")
         except urllib.error.HTTPError as exc:
-            if 300 <= exc.code < 400:
-                raise PolicyDeniedError("HTTP redirects are refused") from exc
-            raise ValueError(f"HTTP request failed with status {exc.code}") from exc
+            try:
+                if 300 <= exc.code < 400:
+                    raise PolicyDeniedError("HTTP redirects are refused") from exc
+                raise ValueError(f"HTTP request failed with status {exc.code}") from exc
+            finally:
+                exc.close()
         truncated = len(content) > self.limits.http_bytes
         return {
             "url": url,

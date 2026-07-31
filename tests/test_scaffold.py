@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import importlib.metadata
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -30,6 +32,24 @@ class ScaffoldTests(unittest.TestCase):
         args = build_mock_parser().parse_args(["--port", "9000"])
         self.assertEqual(args.host, "127.0.0.1")
         self.assertEqual(args.port, 9000)
+
+    def test_setup_installs_public_console_commands(self) -> None:
+        scripts = {
+            entry.name: entry.value
+            for entry in importlib.metadata.entry_points(group="console_scripts")
+        }
+        self.assertEqual(scripts.get("agent"), "agent.cli:main")
+        self.assertEqual(scripts.get("mockllm"), "mockllm.server:main")
+        for name in ("agent", "mockllm"):
+            with self.subTest(command=name):
+                completed = subprocess.run(
+                    [sys.executable, "-m", name, "--help"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
 
     def test_runtime_workspace_exists(self) -> None:
         self.assertTrue((ROOT / "workspace").is_dir())

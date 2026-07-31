@@ -73,7 +73,8 @@ that immutable task explicitly grants one send to a named address. The model and
 tool data can never add a grant or change its recipient. File paths reject both
 slash styles, drives, traversal, and symlinks. HTTP requires an exact loopback
 origin and refuses redirects. Model transport separately enforces the same
-localhost-only, no-redirect boundary.
+localhost-only, no-redirect boundary. Run IDs are filesystem-safe, and tools
+cannot access the runtime database, locks, sandboxes, or traces.
 
 **Python is fail-closed but not a perfect Windows sandbox.** Code is AST-checked
 against a small module allow-list and denied filesystem/network/dynamic access;

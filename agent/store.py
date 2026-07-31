@@ -18,6 +18,7 @@ from agent.events import (
     Event,
     calculate_event_hash,
     event_id,
+    validate_run_id,
 )
 from agent.state import RunState, rebuild_state
 from mockllm.tokenizer import canonical_json
@@ -228,7 +229,7 @@ class EventStore:
             raise ValueError("task must not be empty")
         if not scenario.strip():
             raise ValueError("scenario must not be empty")
-        selected_id = run_id or uuid.uuid4().hex
+        selected_id = validate_run_id(uuid.uuid4().hex if run_id is None else run_id)
         now = _utc_now()
         with self._connect() as connection:
             self._begin(connection)
@@ -555,6 +556,7 @@ class EventStore:
         )
 
     def load_events(self, run_id: str) -> list[Event]:
+        validate_run_id(run_id)
         with self._connect() as connection:
             run = connection.execute(
                 "SELECT 1 FROM runs WHERE run_id = ?", (run_id,)
