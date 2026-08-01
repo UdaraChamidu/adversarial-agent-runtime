@@ -1,5 +1,7 @@
 # Adversarial Agent Runtime
 
+Take-home assessment for QNetwork's AI Automation Engineer role.
+
 A self-contained implementation of Part A of the adversarial agent runtime
 assessment. Part B is intentionally not started, following the required
 submission sequence.
