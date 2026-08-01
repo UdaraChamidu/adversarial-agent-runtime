@@ -1,10 +1,11 @@
 # Adversarial Agent Runtime
 
-A self-contained implementation of Part A of the agent-runtime exercise in
-`candidate-brief.md`. Part B is intentionally not started.
+A self-contained implementation of Part A of the adversarial agent runtime
+assessment. Part B is intentionally not started, following the required
+submission sequence.
 
-Following clarification from the publisher, this repository builds the entire
-local challenge environment from scratch:
+Following clarification from the assessment team, this repository also builds
+the local challenge environment from scratch:
 
 - a deterministic tokenizer;
 - a Messages-compatible hostile mock model with scenarios S1–S12;
@@ -57,10 +58,10 @@ python scripts/tasks.py chaos
 ```
 
 Commands are added only when their implementation and contract tests exist.
-`make setup` performs an editable, dependency-free install so the `agent` and
-`mockllm` console commands are available. On Windows, Python's user Scripts
-directory may not be on `PATH`; the equivalent `python -m` commands above remain
-the supported fallback.
+`make setup` performs an editable install with no runtime dependencies so the
+`agent` and `mockllm` console commands are available. On Windows, Python's user
+Scripts directory may not be on `PATH`; use `python -m agent` and
+`python -m mockllm` as the supported equivalents.
 
 `make eval` runs 21 cases, prints the pass rate, writes
 `evals/reports/latest.json`, and diffs statuses against
